@@ -13,6 +13,8 @@ import {
 import { Camera } from "expo-camera";
 import { Video } from "expo-av";
 import { Audio } from 'expo-av';
+import * as FileSystem from 'expo-file-system';
+import * as MediaLibrary from 'expo-media-library';
 
 const WINDOW_HEIGHT = Dimensions.get("window").height;
 const closeButtonSize = Math.floor(WINDOW_HEIGHT * 0.032);
@@ -30,29 +32,29 @@ export default function App() {
 
   useEffect(() => {
 
-    (async () => {
-      const res = await Camera.requestPermissionsAsync();
-      const resaudio = await Audio.requestPermissionsAsync();
-      setHasPermission((res.status === "granted" ) && (resaudio.status === "granted"));
-
+    (async () => {    
+      const storagePermission = await MediaLibrary.requestPermissionsAsync();
+      const cameraPermission = await Camera.requestPermissionsAsync();
+      const audioPermission = await Audio.requestPermissionsAsync();
+      setHasPermission((storagePermission.status === "granted" ) && (cameraPermission.status === "granted") && (audioPermission.status === "granted"));
     })();
 
   }, []);
 
 
-  const onCameraReady = () => {
-    setIsCameraReady(true);
-
-  };
+ const onCameraReady = () => {
+   setIsCameraReady(true);
+ };
 
 
   const takePicture = async () => {
 
     if (cameraRef.current) {
-      const options = { quality: 0.5, base64: true, skipProcessing: true };
+      const options = { quality: 1, base64: false, skipProcessing: false };
       const data = await cameraRef.current.takePictureAsync(options);
       const source = data.uri;
-
+      FileSystem.moveAsync({from:data.uri,to: FileSystem.cacheDirectory + "takealook.jpg" });
+      const asset = await MediaLibrary.createAssetAsync(FileSystem.cacheDirectory + "takealook.jpg");
       if (source) {
         await cameraRef.current.pausePreview();
         setIsPreview(true);
@@ -70,6 +72,7 @@ export default function App() {
           setIsVideoRecording(true);
           const data = await videoRecordPromise;
           const source = data.uri;
+          const asset = await MediaLibrary.createAssetAsync(data.uri);
           if (source) {
             setIsPreview(true);
             console.log("video source", source);
